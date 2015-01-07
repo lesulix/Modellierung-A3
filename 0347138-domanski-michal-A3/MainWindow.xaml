@@ -1,0 +1,226 @@
+﻿<Window x:Class="SimpleCGA.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SimpleCGA" 
+        xmlns:sdx="clr-namespace:SharpDX;assembly=SharpDX" 
+        xmlns:htx="clr-namespace:HelixToolkit.SharpDX.Wpf;assembly=HelixToolkit.SharpDX.Wpf"        
+        Title="{Binding Student}" Height="600" Width="1200">
+
+    <!-- window resources-->
+    <Window.Resources>
+        <x:StaticExtension Member="htx:Techniques.RenderTechniques" x:Key="RenderTechniques"/>        
+        <Thickness x:Key="LargeMargin">8</Thickness>
+        <Thickness x:Key="SmallMargin">2</Thickness>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <!-- Shape3D Template-->
+        <DataTemplate x:Key="Shape3DTemplate">
+            <htx:MeshGeometryModel3D Geometry="{Binding Geometry}" Transform="{Binding Transform}" Material="{Binding Material}"/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <!-- Input Bindings -->
+    <Window.InputBindings>
+        <KeyBinding Key="O" Modifiers="Control"         Command="{Binding OpenCmd}"/>
+        <KeyBinding Key="S" Modifiers="Control"         Command="{Binding SaveCmd}"/>
+        <KeyBinding Key="P" Modifiers="Control"         Command="{Binding ParseGrammarCmd}"/>
+        <KeyBinding Key="F5"    Command="{Binding ParseGrammarCmd}"/>
+        <!--<KeyBinding Key="S" Modifiers="Control+Shift"   Command="{Binding SaveAsCmd}"/>-->
+
+        <!--<KeyBinding Key="E" Modifiers="Control"         Command="{Binding ExportCodeCmd}"/>-->
+        <!--<KeyBinding Key="E" Modifiers="Control+Shift"   Command="{Binding ImportCodeCmd}"/>-->
+    </Window.InputBindings>
+
+    <!-- main grid -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <!-- the main canvas-->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Row="0" Grid.Column="0" >
+                <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                <TextBox Grid.Row="0" 
+                         Background="LightCoral"
+                         Foreground="DarkRed"
+                         HorizontalAlignment="Stretch" 
+                         VerticalAlignment="Stretch" 
+                         Margin="4"
+                         TextWrapping="Wrap"
+                         IsReadOnly="True"
+                         VerticalScrollBarVisibility="Auto"
+                         AcceptsReturn="True"                         
+                         Text="{Binding Parser.ErrorText}"
+                         Visibility="{Binding Parser.HasError, Converter={StaticResource BoolToVisibilityConverter}}"/>               
+                <TextBox Grid.Row="1" x:Name="editor" 
+                         HorizontalAlignment="Stretch" 
+                         VerticalAlignment="Stretch" 
+                         Margin="4"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         Text="{Binding Parser.ProductionCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Margin="{StaticResource SmallMargin}" Command="{Binding ParseGrammarCmd}">Parse</Button>
+                    <!--<Button Margin="{StaticResource SmallMargin}" Command="{Binding UpdateGrammarCmd}">Update</Button>-->
+                    <Button Margin="{StaticResource SmallMargin}" Command="{Binding DefaultGrammarCmd}">Default</Button>
+                    <Button Command="{Binding OpenCmd}" Grid.Row="1" Grid.Column="0" Margin="{StaticResource SmallMargin}">Open</Button>
+                    <Button Command="{Binding SaveCmd}" Grid.Row="1" Grid.Column="0" Margin="{StaticResource SmallMargin}">Save</Button>
+                </StackPanel>
+            </Grid>
+
+            <htx:Viewport3DX  
+                Grid.Row="0" Grid.Column="1" 
+                x:Name="view1" 
+                Camera="{Binding Camera}"
+                Title="{Binding Title}"
+                SubTitle="{Binding FileName}"                
+                TextBrush="Black"                  
+                CoordinateSystemLabelForeground="White"
+                IsShadowMappingEnabled="{Binding HasShadowMap}"
+                RenderTechnique="{Binding RenderTechnique}"
+                UseDefaultGestures="False">
+                <htx:Viewport3DX.InputBindings>
+                    <KeyBinding Key="B" Command="htx:ViewportCommands.BackView"/>
+                    <KeyBinding Key="F" Command="htx:ViewportCommands.FrontView"/>
+                    <KeyBinding Key="U" Command="htx:ViewportCommands.TopView"/>
+                    <KeyBinding Key="D" Command="htx:ViewportCommands.BottomView"/>
+                    <KeyBinding Key="L" Command="htx:ViewportCommands.LeftView"/>
+                    <KeyBinding Key="R" Command="htx:ViewportCommands.RightView"/>
+                    <KeyBinding Gesture="Control+E" Command="htx:ViewportCommands.ZoomExtents"/>
+                    <MouseBinding Gesture="RightClick" Command="htx:ViewportCommands.Rotate"/>
+                    <MouseBinding Gesture="MiddleClick" Command="htx:ViewportCommands.Zoom"/>
+                    <MouseBinding Gesture="Shift+RightClick" Command="htx:ViewportCommands.Pan"/>
+                </htx:Viewport3DX.InputBindings>
+                <!--<htx:ShadowMap3D x:Name="shadowMap" Resolution="{Binding ShadowMapResolution}" Intensity="{Binding Intensity}" FactorPCF="{Binding FactorPCF}" Bias="{Binding Bias}"/>-->
+                <htx:AmbientLight3D Color="{Binding AmbientLightColor}"/>
+                <htx:DirectionalLight3D Color="{Binding DirectionalLight1Color}" Direction="{Binding DirectionalLight1Direction}"/>
+                <htx:DirectionalLight3D Color="{Binding DirectionalLight2Color}" Direction="{Binding DirectionalLight2Direction}"/>
+                <!--<htx:EnvironmentMap3D  IsActive="{Binding IsEnvReflecting}" IsRendering="{Binding IsEnvRendering}"  Filename="./Textures/CubemapCity1.dds"/>-->
+
+                <htx:LineGeometryModel3D IsRendering="{Binding RenderAxes}"   IsThrowingShadow="False" Geometry="{Binding Axes}"   Transform="{Binding AxesTransform}" Color="{Binding AxesColor}" Thickness="{Binding AxesThickness}" Smoothness="{Binding AxesSmoothness}" DepthBias="0" />
+                <htx:LineGeometryModel3D IsRendering="{Binding RenderGridXY}" IsThrowingShadow="False" Geometry="{Binding GridXY}" Transform="{Binding AxesTransform}" Color="{Binding GridColor}" Thickness="{Binding GridThickness}" Smoothness="{Binding GridSmoothness}" DepthBias="0" />
+                <htx:LineGeometryModel3D IsRendering="{Binding RenderGridXZ}" IsThrowingShadow="False" Geometry="{Binding GridXZ}" Transform="{Binding AxesTransform}" Color="{Binding GridColor}" Thickness="{Binding GridThickness}" Smoothness="{Binding GridSmoothness}" DepthBias="0" />
+                <htx:MeshGeometryModel3D x:Name="plane" IsThrowingShadow="False" Geometry="{Binding Plane}" Transform="{Binding PlaneTransform}"  Material="{Binding GrayMaterial}" />
+
+                <!--<htx:MeshGeometryModel3D Geometry="{Binding TestModel}" Transform="{Binding MainTransform}" Material="{Binding GrayMaterial}"/>-->
+                <htx:TransformableItems3DControl IsThrowingShadow="True" ItemTemplate="{StaticResource Shape3DTemplate}" ItemsSource="{Binding Shapes}" Transform="{Binding MainTransform}" />
+                
+            </htx:Viewport3DX>
+        </Grid>
+
+        <!--menu-->
+        <!--
+        <Menu Grid.Row="0" VerticalAlignment="Top">
+            <MenuItem Header="File">
+                <MenuItem Header="Open"  InputGestureText="Ctrl+O" Command="{Binding OpenCmd}" />
+                <MenuItem Header="Save As"  InputGestureText="Ctrl+S" Command="{Binding SaveCmd}" />
+            </MenuItem>
+        </Menu>
+        -->
+
+        <!-- right hand controls panel -->
+        <ScrollViewer Grid.Row="1"  Visibility="{Binding ControlsVisible}"  Width="Auto" HorizontalAlignment="Right" VerticalAlignment="Top" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="4">
+            <StackPanel Margin="0">
+
+                <!-- Properties -->
+                <!--<Expander Header="Shapes" HorizontalAlignment="Right" Width="140" VerticalAlignment="Top" BorderBrush="LightGray" IsExpanded="True" Margin="10" >
+                    <Expander.Background>
+                        <SolidColorBrush Opacity="0.25" Color="WhiteSmoke"/>
+                    </Expander.Background>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>                        
+                        
+                        <Button Command="{Binding DelCmd}" Grid.Row="1" Grid.Column="1" Margin="{StaticResource SmallMargin}">Del</Button>
+                    </Grid>
+                </Expander>-->
+
+                <!-- Renderign -->
+                <Expander Header="Rendering"  HorizontalAlignment="Right" Width="140" VerticalAlignment="Top" BorderBrush="LightGray" IsExpanded="True"  Margin="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <ComboBox Grid.Row="0"  Text="- Select Techniqe -" ItemsSource="{Binding Source={StaticResource RenderTechniques}}" SelectedItem="{Binding RenderTechnique}" IsEditable="True" IsReadOnly="True" Margin="{StaticResource SmallMargin}" />
+                        <!--<ComboBox Grid.Row="1"  Text="- Select Camera -" ItemsSource="{Binding CameraModelCollection}" SelectedItem="{Binding CameraModel}" IsEditable="True" IsReadOnly="True"  Margin="{StaticResource SmallMargin}"/>-->
+                        <!--<CheckBox Grid.Row="2"  IsChecked="{Binding IsRendering, ElementName=plane}" Margin="{StaticResource SmallMargin}">Render Plane</CheckBox>-->
+                        <!--<CheckBox Grid.Row="3"  IsChecked="{Binding RenderAxes}" Margin="{StaticResource SmallMargin}">Render Axes</CheckBox>-->
+                        <!--<CheckBox Grid.Row="4"  IsChecked="{Binding RenderGridXY}" Margin="{StaticResource SmallMargin}">Render Grid XY</CheckBox>-->
+                        <!--<CheckBox Grid.Row="5"  IsChecked="{Binding RenderGridXZ}" Margin="{StaticResource SmallMargin}">Render Grid XZ</CheckBox>-->
+                        <!--<CheckBox Grid.Row="6"  IsChecked="{Binding RenderSolid,ElementName=facade3d}" Margin="{StaticResource SmallMargin}">Render Solids</CheckBox>-->
+                        <!--<CheckBox Grid.Row="7"  IsChecked="{Binding RenderWires,ElementName=facade3d}" Margin="{StaticResource SmallMargin}">Render Wires</CheckBox>-->
+                        <!--<CheckBox Grid.Row="8"  IsChecked="{Binding IsEnvReflecting}" Margin="{StaticResource SmallMargin}" >Reflect Env Map</CheckBox>-->
+                        <!--<CheckBox Grid.Row="9"  IsChecked="{Binding IsEnvRendering}" Margin="{StaticResource SmallMargin}" >Render Env Map</CheckBox>-->
+                        <!--<CheckBox Grid.Row="10" IsChecked="{Binding RenderMaterial}" Command="{Binding FullUpdateCommand}" Margin="{StaticResource SmallMargin}" >Render Material</CheckBox>-->
+                        <!--<Button Grid.Row="11" Margin="{StaticResource SmallMargin}" Command="{Binding MainViewModel.FullUpdateCommand}">Update Material</Button>-->
+                        <!--<Border   Grid.Row="12" BorderThickness="1"  Margin="4" BorderBrush="LightGray" >
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox  Grid.Row="0" Grid.ColumnSpan="3"  IsChecked="{Binding HasShadowMap}" Margin="3">Shadow Map</CheckBox>
+                                <TextBlock Grid.Row="1" Grid.Column="0" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}">Int.:</TextBlock>
+                                <Slider    Grid.Row="1" Grid.Column="1" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" x:Name="sliderInt" Value="{Binding Intensity}" Minimum="0" Maximum="1"  TickFrequency="0.01" IsSnapToTickEnabled="True"  />
+                                <TextBox   Grid.Row="1" Grid.Column="2" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" Width="35" HorizontalAlignment="Right"  Text="{Binding Value, ElementName=sliderInt}"></TextBox>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}">PCF:</TextBlock>
+                                <Slider    Grid.Row="2" Grid.Column="1" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" x:Name="sliderPcf" Value="{Binding FactorPCF}" Minimum="0" Maximum="10"  TickFrequency="0.01" IsSnapToTickEnabled="True"  />
+                                <TextBox   Grid.Row="2" Grid.Column="2" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" Width="35" HorizontalAlignment="Right"  Text="{Binding Value, ElementName=sliderPcf}"></TextBox>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}">Bias:</TextBlock>
+                                <Slider    Grid.Row="3" Grid.Column="1" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" x:Name="sliderBias" Value="{Binding Bias}" Minimum="0" Maximum="0.1" TickFrequency="0.001" IsSnapToTickEnabled="True"  />
+                                <TextBox   Grid.Row="3" Grid.Column="2" IsEnabled="{Binding HasShadowMap}" Margin="{StaticResource SmallMargin}" Width="35" HorizontalAlignment="Right" Text="{Binding Value, ElementName=sliderBias}"></TextBox>
+                            </Grid>
+                        </Border>-->
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

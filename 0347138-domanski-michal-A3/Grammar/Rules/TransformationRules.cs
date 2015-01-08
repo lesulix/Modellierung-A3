@@ -84,13 +84,72 @@ namespace SimpleCGA.Grammar.Rules
         public override bool SingleShapeOutput { get { return true; } }
     }
 
-    //TODO Task 2 write the rest of the transformation rules
-    //Note that: the parameter "local" applies a local coordinate system rotation when true and a global when false
-    //Note that: if the parameter "scopeCenter" is true, it rotates/scales around the middle point of the scope (instead of the origin which is in the corner of the scope)
+    public class Rotate : ProductionRule
+    {
+        readonly Func<IDictionary<string, double>, Angle> Angle;
+        readonly Func<IDictionary<string, double>, Axis> Axis;
+        readonly Func<IDictionary<string, double>, bool> LocalTransformation;
 
-    //TODO Task 2b Rotation rule for local and world rotation
-    //Define the Constructor as:
-    //   Rotate(CGAGrammar grammar, double probability, string matches, Axis axis, Angle angle, bool local, bool scopeCenter = false);
+        public Rotate(CGAGrammar grammar, double probability, string matches, Axis axis, Angle angle, bool local, bool scopeCenter = false)
+            : base(grammar, probability, matches)
+        {
+            Angle = x => angle;
+            Axis = x => axis;
+            LocalTransformation = x => local;
+        }
+
+        public override IList<Shape> Apply(Shape input)
+        {
+            var angle = Angle(input.Symbol.Parameters);
+            var axis = Axis(input.Symbol.Parameters);
+            var rotationMatrix =
+                axis == SimpleCGA.Grammar.Axis.X
+                    ? Matrix.RotationX((float) angle.Radians)
+                    : axis == SimpleCGA.Grammar.Axis.Y
+                        ? Matrix.RotationY((float) angle.Radians)
+                        : Matrix.RotationZ((float) angle.Radians);
+
+            Matrix transformedScope;
+            if (LocalTransformation(input.Symbol.Parameters))
+                transformedScope = rotationMatrix * input.Scope;
+            else
+                transformedScope = input.Scope * rotationMatrix;
+
+            return new[] { new Shape(input.Symbol, transformedScope, input.Color) };
+        }
+
+        public override bool SingleShapeOutput { get { return true; } }
+    }
+
+    public class Scale : ProductionRule
+    {
+        readonly Func<IDictionary<string, double>, Vector3> Scaling;
+        readonly Func<IDictionary<string, double>, bool> LocalTransformation;
+
+        public Scale(CGAGrammar grammar, double probability, string matches, double sx, double sy, double sz, bool local, bool scopeCenter = false)
+            : base(grammar, probability, matches)
+        {
+            Scaling = x => new Vector3((float)sx, (float)sy, (float)sz);
+            LocalTransformation = x => local;
+        }
+
+        public override IList<Shape> Apply(Shape input)
+        {
+            var scaling = Scaling(input.Symbol.Parameters);
+            var scalingMatrix = Matrix.Scaling(scaling);
+
+            Matrix transformedScope;
+            if (LocalTransformation(input.Symbol.Parameters))
+                transformedScope = scalingMatrix * input.Scope;
+            else
+                transformedScope = input.Scope * scalingMatrix;
+
+            return new[] { new Shape(input.Symbol, transformedScope, input.Color) };
+        }
+
+        public override bool SingleShapeOutput { get { return true; } }
+    }
+    
     //TODO Task 4: Write additional constructors for random and parametric expressions
     //TODO 4a
     //   Rotate(CGAGrammar grammar, double probability, string matches, Axis axis, Func<double> angleRandom, bool local, bool scopeCenter = false)
@@ -99,11 +158,6 @@ namespace SimpleCGA.Grammar.Rules
     //   Rotate(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, Func<IDictionary<string, double>, Angle> angleFunc, bool local, bool scopeCenter = false)
     //   Rotate(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, Func<IDictionary<string, double>, Angle> angleFunc, Func<IDictionary<string, double>, bool> localFunc, bool scopeCenter = false)
     
-
-    
-    //TODO Task 2c Scale rule for local scaling
-    //Define the Constructor as:
-    //   Scale(CGAGrammar grammar, double probability, string matches, double sx, double sy, double sz, bool local, bool scopeCenter = false);
     //TODO Task 4: Write additional constructors for random and parametric expressions
     //TODO 4a
     //   Scale(CGAGrammar grammar, double probability, string matches, System.Func<double> sxRandom, System.Func<double> syRandom, System.Func<double> szRandom, bool local, bool scopeCenter = false)

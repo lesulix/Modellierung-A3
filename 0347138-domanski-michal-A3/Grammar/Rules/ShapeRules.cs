@@ -44,10 +44,6 @@ namespace SimpleCGA.Grammar.Rules
 
     public class Split : ProductionRule
     {
-        //TODO Task 3b: Implement the split rule (only one direction at once, hence Axis.XY is not valid)
-        //Please note that details on how this rule wors can be found on page 3 of the paper
-        //Define the Constructor as:
-        //    Split(CGAGrammar grammar, double probability, string matches, Axis splitAxis, params SubdivisionPart[] splitParts);
         //TODO Task 4c: Write addional constructors for parametric expressions
         //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params SubdivisionPart[] splitParts)
         //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params Func<IDictionary<string, double>, SubdivisionPart>[] splitParts)
@@ -101,6 +97,7 @@ namespace SimpleCGA.Grammar.Rules
                 Row3 = mSplitAxis == Axis.Z ? scaledAxis.ToVector4(0) : input.Row3,
                 Row4 = Vector4.UnitW
             };
+            // Add offset of previous affine transformations as translation
             result.TranslationVector =  input.TranslationVector + offset;
             return result;
         }
@@ -116,11 +113,77 @@ namespace SimpleCGA.Grammar.Rules
         }
     }
 
-    //TODO Task 3b: Implement the repeat rule (only one direction at once, hence something like Axis.XY is not valid)
-    //Please note that details on how this rule wors can be found on page 3 of the paper
-    //Define the Constructor as:
-    //   Repeat(CGAGrammar grammar, double probability, string matches, Axis splitAxis, string newName, double size);
+
     //TODO Task 3c: Take care of 2D, 1D and 0D shapes, so that some split directions along zeroed axes will be disallowed. Report a grammar erro in that case.
+    public class Repeat : ProductionRule
+    {
+        //TODO Task 4c: Write addional constructors for parametric expressions
+        //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params SubdivisionPart[] splitParts)
+        //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params Func<IDictionary<string, double>, SubdivisionPart>[] splitParts)
+
+        private readonly Axis mSplitAxis;
+        private readonly string mNewName;
+        private readonly double mSize;
+
+        public Repeat(CGAGrammar grammar, double probability, string matches, Axis splitAxis, string newName, double size) : 
+            base(grammar, probability, matches)
+        {
+            mSplitAxis = splitAxis;
+            mNewName = newName;
+            mSize = size;
+        }
+
+        public override IList<Shape> Apply(Shape input)
+        {
+            var result = new List<Shape>();
+            //Extract the scaled axis from the affine transformation formed by the 3x3 submatrix
+            var effectiveAxis =
+                (mSplitAxis == Axis.X
+                    ? input.Scope.Row1
+                    : mSplitAxis == Axis.Y
+                        ? input.Scope.Row2
+                        : input.Scope.Row3).ToXYZ();
+            var normalizedAxis = effectiveAxis.Normalized();
+
+            var amountOfRepeats = Math.Floor(mSize/effectiveAxis.Length());
+            var effectiveSize = mSize/amountOfRepeats;
+
+            var currentOffset = Vector3.Zero;
+
+            foreach (var splitIndex in Enumerable.Range(0, (int) amountOfRepeats))
+            {
+                var scaledAxis = normalizedAxis * (float)effectiveSize;
+                result.Add(new Shape(new Semantics(mNewName, CopyParameters(input)), AdaptMatrix(input.Scope, scaledAxis, currentOffset), input.Color));
+                currentOffset += scaledAxis;
+            }
+            return result;
+        }
+
+        private Matrix AdaptMatrix(Matrix input, Vector3 scaledAxis, Vector3 offset)
+        {
+            var result = new Matrix
+            {
+                Row1 = mSplitAxis == Axis.X ? scaledAxis.ToVector4(0) : input.Row1,
+                Row2 = mSplitAxis == Axis.Y ? scaledAxis.ToVector4(0) : input.Row2,
+                Row3 = mSplitAxis == Axis.Z ? scaledAxis.ToVector4(0) : input.Row3,
+                Row4 = Vector4.UnitW
+            };
+            // Add offset of previous affine transformations as translation
+            result.TranslationVector = input.TranslationVector + offset;
+            return result;
+        }
+
+        private static Dictionary<string, double> CopyParameters(Shape input)
+        {
+            return input.Symbol.Parameters.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        public override bool SingleShapeOutput
+        {
+            get { return false; }
+        }
+    }
+
     //TODO Task 4: Write addional constructors for random and parametric expressions
     //Task 4a
     //   Repeat(CGAGrammar grammar, double probability, string matches, Axis splitAxis, string newName, Func<double> sizeFunc)

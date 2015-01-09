@@ -97,8 +97,7 @@ namespace SimpleCGA
 
         public MainViewModel()
         {
-            // TODO_A3: fill in your personal data
-            this.Student = "0000000-lastname-firstname-A3";
+            this.Student = "034137-domanski-michal-A3";
 
             // commands                      
             this.OpenCmd = new RelayCommand((o) => OnOpen());

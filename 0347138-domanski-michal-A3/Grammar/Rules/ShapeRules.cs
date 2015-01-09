@@ -1,29 +1,120 @@
 ﻿//Grammar framework by Martin Ilcik. In case you are interested in PR/DA in this field, contact ilcik@cg.tuwien.ac.at
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
+using HelixToolkit.SharpDX;
+using SharpDX;
 
 namespace SimpleCGA.Grammar.Rules
 {
     //Note: For rules producing more than a single shape the following parameters are to be *replicated*: semantic parameters and material. Be careful in order not to loose points here.
+    public class Copy : ProductionRule
+    {
+        private string[] mCopyNames;
 
-    //TODO Task 3a: Implement the copy rule. It creates a number (at least one) of copies of the current shape, but with different semantic names. The original shape is of course preserved.
-    //This rule acts very similar to the I rule in the paper, but also addition of non-terminals is possible.
-    //Define the Constructor as:
-    //    Copy(CGAGrammar grammar, double probability, string matches, params string[] copyNames);
-    //TODO Task 4c: Write addional constructor for parametric expressions
-    //    Copy(CGAGrammar grammar, double probability, string matches, Func<<IDictionary<string, double>, string[]> copyNames);
+        public Copy(CGAGrammar grammar, double probability, string matches, params string[] copyNames)
+            : base(grammar, probability, matches)
+        {
+            mCopyNames = copyNames;
+        }
 
+        public override IList<Shape> Apply(Shape input)
+        {
+            var result = new List<Shape>() { input };
+            result.AddRange(mCopyNames.Select(
+                copyName => new Shape(new Semantics(copyName, CopyParameters(input)), Matrix.Identity, input.Color)));
+            return result;
+        }
 
-    //TODO Task 3b: Implement the split rule (only one direction at once, hence Axis.XY is not valid)
-    //Please note that details on how this rule wors can be found on page 3 of the paper
-    //Define the Constructor as:
-    //    Split(CGAGrammar grammar, double probability, string matches, Axis splitAxis, params SubdivisionPart[] splitParts);
-    //TODO Task 4c: Write addional constructors for parametric expressions
-    //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params SubdivisionPart[] splitParts)
-    //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params Func<IDictionary<string, double>, SubdivisionPart>[] splitParts)
+        private static Dictionary<string, double> CopyParameters(Shape input)
+        {
+            return input.Symbol.Parameters.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
 
+        public override bool SingleShapeOutput
+        {
+            get { return false; }
+        }
+
+        //TODO Task 4c: Write addional constructor for parametric expressions
+        //    Copy(CGAGrammar grammar, double probability, string matches, Func<<IDictionary<string, double>, string[]> copyNames);
+    }
+
+    public class Split : ProductionRule
+    {
+        //TODO Task 3b: Implement the split rule (only one direction at once, hence Axis.XY is not valid)
+        //Please note that details on how this rule wors can be found on page 3 of the paper
+        //Define the Constructor as:
+        //    Split(CGAGrammar grammar, double probability, string matches, Axis splitAxis, params SubdivisionPart[] splitParts);
+        //TODO Task 4c: Write addional constructors for parametric expressions
+        //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params SubdivisionPart[] splitParts)
+        //   Split(CGAGrammar grammar, double probability, string matches, Func<IDictionary<string, double>, Axis> axisFunc, params Func<IDictionary<string, double>, SubdivisionPart>[] splitParts)
+
+        private readonly SubdivisionPart[] mSplitParts;
+        private readonly Axis mSplitAxis;
+
+        public Split(CGAGrammar grammar, double probability, string matches, Axis splitAxis, params SubdivisionPart[] splitParts)
+            : base(grammar, probability, matches)
+        {
+            mSplitParts = splitParts;
+            mSplitAxis = splitAxis;
+        }
+
+        public override IList<Shape> Apply(Shape input)
+        {
+            var result = new List<Shape>();
+            //Extract the scaled axis from the affine transformation formed by the 3x3 submatrix
+            var effectiveAxis =
+                (mSplitAxis == Axis.X
+                    ? input.Scope.Row1
+                    : mSplitAxis == Axis.Y
+                        ? input.Scope.Row2
+                        : input.Scope.Row3).ToXYZ();
+            var normalizedAxis = effectiveAxis.Normalized();
+
+            var flexibleExtentAvailable = effectiveAxis.Length() -
+                                 mSplitParts.Where(p => !p.Relative).Sum(p => p.Size(input.Symbol.Parameters));
+            var flexibleExtentRequired = mSplitParts.Where(p => p.Relative).Sum(p => p.Size(input.Symbol.Parameters));
+
+            // Compute the factor to redistribute the space among all flexible elements
+            var flexScale = flexibleExtentAvailable / flexibleExtentRequired;
+            var currentOffset = Vector3.Zero;
+
+            foreach (var splitPart in mSplitParts)
+            {
+                var size = splitPart.Size(input.Symbol.Parameters) * (splitPart.Relative ? flexScale : 1f);
+                var scaledAxis = normalizedAxis * (float) size;
+                result.Add(new Shape(new Semantics(splitPart.Name, CopyParameters(input)), AdaptMatrix(input.Scope, scaledAxis, currentOffset), input.Color));
+                currentOffset += scaledAxis;
+            }
+            return result;
+        }
+
+        private Matrix AdaptMatrix(Matrix input, Vector3 scaledAxis, Vector3 offset)
+        {
+            var result = new Matrix
+            {
+                Row1 = mSplitAxis == Axis.X ? scaledAxis.ToVector4(0) : input.Row1,
+                Row2 = mSplitAxis == Axis.Y ? scaledAxis.ToVector4(0) : input.Row2,
+                Row3 = mSplitAxis == Axis.Z ? scaledAxis.ToVector4(0) : input.Row3,
+                Row4 = Vector4.UnitW
+            };
+            result.TranslationVector =  input.TranslationVector + offset;
+            return result;
+        }
+
+        private static Dictionary<string, double> CopyParameters(Shape input)
+        {
+            return input.Symbol.Parameters.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        }
+
+        public override bool SingleShapeOutput
+        {
+            get { return false; }
+        }
+    }
 
     //TODO Task 3b: Implement the repeat rule (only one direction at once, hence something like Axis.XY is not valid)
     //Please note that details on how this rule wors can be found on page 3 of the paper
